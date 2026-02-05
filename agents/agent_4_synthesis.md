@@ -20,12 +20,12 @@ outputs_to: [mother_agent]
 ## Responsibilities
 
 1. **Data Aggregation**
-   - Combine PM insights and English expressions
+   - Combine PM insights, questions and English expressions
    - Merge metadata from all agents
    - Preserve all structured data
 
 2. **Cross-Analysis Synthesis**
-   - Identify connections between PM insights and English expressions
+   - Identify connections between PM insights, questions and English expressions
    - Generate executive summary
    - Highlight key themes and patterns
 
@@ -48,6 +48,10 @@ outputs_to: [mother_agent]
       "title": "Data-Driven Prioritization Framework",
       "description": "Use the RICE scoring model..."
     }
+  ],
+  "questions": [
+    "How can I apply the RICE framework to my current product roadmap?",
+    "What metrics should I track to measure stakeholder alignment?"
   ],
   "english_expressions": [
     {
@@ -73,7 +77,7 @@ outputs_to: [mother_agent]
 {
   "success": true,
   "synthesis": {
-    "executive_summary": "This video provides 5 actionable PM insights focused on prioritization, stakeholder management, and metrics. It also demonstrates 7 advanced business expressions commonly used in executive communication.",
+    "executive_summary": "This video provides 5 actionable PM insights focused on prioritization, stakeholder management, and metrics, along with 2 thought-provoking questions to apply these concepts. It also demonstrates 10 advanced business expressions commonly used in executive communication.",
     "key_themes": [
       "Data-driven decision making",
       "Stakeholder alignment",
@@ -106,7 +110,8 @@ outputs_to: [mother_agent]
   },
   "metadata": {
     "total_insights": 5,
-    "total_expressions": 7,
+    "total_questions": 2,
+    "total_expressions": 10,
     "synthesis_time_ms": 500,
     "quality_score": 0.92
   }
@@ -146,17 +151,19 @@ Agent 2 (PM Skills)    Agent 3 (English)    Agent 1 (Metadata)
 ### 1. Executive Summary Generation
 
 ```python
-def generate_executive_summary(pm_insights, english_expressions, video_metadata):
+def generate_executive_summary(pm_insights, questions, english_expressions, video_metadata):
     """Generate concise executive summary."""
     
     insights_count = len(pm_insights)
+    questions_count = len(questions)
     expressions_count = len(english_expressions)
     
     # Extract key themes from insights
     themes = extract_themes(pm_insights)
     
     summary = f"This video provides {insights_count} actionable PM insights "
-    summary += f"focused on {', '.join(themes[:3])}. "
+    summary += f"focused on {', '.join(themes[:3])}, "
+    summary += f"along with {questions_count} thought-provoking questions to apply these concepts. "
     summary += f"It also demonstrates {expressions_count} advanced business expressions "
     summary += "commonly used in executive communication."
     
@@ -243,12 +250,13 @@ def create_learning_path(pm_insights, english_expressions):
 class SynthesisAgent:
     """Agent 4: Synthesis Agent"""
     
-    def execute(self, pm_insights, english_expressions, video_metadata):
+    def execute(self, pm_insights, questions, english_expressions, video_metadata):
         """
         Execute synthesis of all analysis results.
         
         Args:
             pm_insights: Results from Agent 2
+            questions: Questions from Agent 2
             english_expressions: Results from Agent 3
             video_metadata: Metadata from Agent 1
             
@@ -261,6 +269,7 @@ class SynthesisAgent:
             # Generate executive summary
             executive_summary = self.generate_executive_summary(
                 pm_insights,
+                questions,
                 english_expressions,
                 video_metadata
             )
@@ -307,6 +316,7 @@ class SynthesisAgent:
                 },
                 "metadata": {
                     "total_insights": len(pm_insights),
+                    "total_questions": len(questions),
                     "total_expressions": len(english_expressions),
                     "synthesis_time_ms": processing_time,
                     "quality_score": quality_score
@@ -320,23 +330,27 @@ class SynthesisAgent:
                 "synthesis": None
             }
     
-    def calculate_quality_score(self, pm_insights, english_expressions, connections):
+    def calculate_quality_score(self, pm_insights, questions, english_expressions, connections):
         """Calculate overall quality score (0-1)."""
         
         score = 0.0
         
-        # Factor 1: Number of insights (max 0.3)
+        # Factor 1: Number of insights (max 0.25)
         if len(pm_insights) == 5:
-            score += 0.3
+            score += 0.25
         
-        # Factor 2: Number of expressions (max 0.3)
-        if len(english_expressions) == 7:
-            score += 0.3
+        # Factor 2: Number of questions (max 0.15)
+        if 1 <= len(questions) <= 2:
+            score += 0.15
         
-        # Factor 3: Connections found (max 0.2)
-        score += min(len(connections) * 0.05, 0.2)
+        # Factor 3: Number of expressions (max 0.25)
+        if len(english_expressions) == 10:
+            score += 0.25
         
-        # Factor 4: Content quality (max 0.2)
+        # Factor 4: Connections found (max 0.15)
+        score += min(len(connections) * 0.05, 0.15)
+        
+        # Factor 5: Content quality (max 0.2)
         avg_description_length = sum(len(i['description']) for i in pm_insights) / len(pm_insights)
         if avg_description_length > 150:
             score += 0.2
@@ -348,9 +362,10 @@ class SynthesisAgent:
 
 | Metric | Target | Weight |
 |--------|--------|--------|
-| Insights count | 5 | 30% |
-| Expressions count | 7 | 30% |
-| Connections found | 3+ | 20% |
+| Insights count | 5 | 25% |
+| Questions count | 1-2 | 15% |
+| Expressions count | 10 | 25% |
+| Connections found | 3+ | 15% |
 | Content quality | High | 20% |
 
 ## Performance Metrics
@@ -371,7 +386,7 @@ class SynthesisAgent:
 ## Output Examples
 
 ### Executive Summary
-> "This video provides 5 actionable PM insights focused on prioritization frameworks, stakeholder alignment, and data-driven decision making. It also demonstrates 7 advanced business expressions commonly used in executive communication, including 'move the needle,' 'table stakes,' and 'align stakeholders.'"
+> "This video provides 5 actionable PM insights focused on prioritization frameworks, stakeholder alignment, and data-driven decision making, along with 2 thought-provoking questions to help apply these concepts. It also demonstrates 10 advanced business expressions commonly used in executive communication, including 'move the needle,' 'table stakes,' and 'de-risk the initiative.'"
 
 ### Key Themes
 - Data-driven decision making
