@@ -4,8 +4,8 @@ Learn PM skills and advanced English from YouTube videos using AI-powered analys
 
 ## Features
 
-- 🎯 **PM Insights**: Extract 5 actionable insights for Product Manager career development
-- 💬 **English Expressions**: Identify 7 advanced business expressions with timestamps
+- 🎯 **PM Insights**: Extract actionable insights for Product Manager career development
+- 💬 **English Expressions**: Identify advanced business expressions with timestamps
 - 🎥 **Interactive Video Player**: Click timestamps to jump to specific moments
 - 🤖 **AI-Powered**: Uses Google Gemini Flash for intelligent content analysis
 
@@ -109,6 +109,6 @@ Analyze a YouTube video.
 - Very long videos (>2 hours) may hit token limits
 - Rate limits apply based on your Google API plan
 
-## License
+## Created by
 
-MIT
+Jiyae Choi
