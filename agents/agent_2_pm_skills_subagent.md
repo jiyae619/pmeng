@@ -26,16 +26,21 @@ outputs_to: [agent_4_synthesis]
    - Extract strategic and tactical advice
 
 2. **Insight Extraction**
-   - Generate exactly 5 high-quality insights
+   - Generate exactly 5 high-quality insights that can be easily applied to PM career
    - Focus on practical, applicable knowledge
    - Prioritize career development value
 
-3. **Structured Output**
+3. **Question Extraction**
+   - Generate 1-2 high-quality detailed questions that the user can apply in real world
+   - Provide questions that can help decision-making, product sense, analytical thinking
+
+4. **Structured Output**
    - Format insights with clear titles (5-8 words)
    - Provide detailed descriptions (2-4 sentences)
    - Return valid JSON for downstream processing
+   - End with 1-2 questions in bold font
 
-4. **Quality Assurance**
+5. **Quality Assurance**
    - Validate insights are PM-specific (not generic)
    - Ensure insights are backed by examples/frameworks
    - Filter out obvious or trivial advice
@@ -67,6 +72,10 @@ outputs_to: [agent_4_synthesis]
       "title": "Stakeholder Alignment Through Storytelling",
       "description": "Frame product decisions as narratives with clear problem statements, user impact, and business outcomes. This approach builds emotional buy-in beyond just data. Use the 'situation-complication-resolution' structure in executive presentations."
     }
+  ],
+  "questions": [
+    "What are the key takeaways from this video for my PM career?",
+    "How can I apply these insights to my current role?"
   ],
   "metadata": {
     "analysis_time_ms": 12000,
@@ -130,17 +139,27 @@ Instructions:
 3. For each insight:
    - Provide a clear, concise title (5-8 words)
    - Write a description of 2-4 sentences explaining the insight and how to apply it
-4. Prioritize insights about: product strategy, stakeholder management, decision-making, user research, metrics, or leadership
+4. Generate 1-2 thought-provoking questions that:
+   - Help the user apply these insights to their real-world PM work
+   - Encourage deeper thinking about decision-making, product sense, or analytical approaches
+   - Are specific and actionable (not generic like "What did you learn?")
+5. Prioritize insights about: product strategy, stakeholder management, decision-making, user research, metrics, or leadership
 
-Return ONLY a JSON array with this exact structure:
-[
-  {{
-    "title": "Insight title here",
-    "description": "2-4 sentence description explaining the insight and how PMs can apply it."
-  }}
-]
+Return ONLY a JSON object with this exact structure:
+{{
+  "insights": [
+    {{
+      "title": "Insight title here",
+      "description": "2-4 sentence description explaining the insight and how PMs can apply it."
+    }}
+  ],
+  "questions": [
+    "Thought-provoking question that helps apply these insights to real PM work?",
+    "Another question that encourages deeper analytical thinking?"
+  ]
+}}
 
-Return exactly 5 insights. Ensure the JSON is valid and properly formatted."""
+Return exactly 5 insights and 1-2 questions. Ensure the JSON is valid and properly formatted."""
 ```
 
 ## Implementation
@@ -199,19 +218,22 @@ class PMSkillsSubagent:
 
 ## Quality Criteria
 
-### ✅ Good Insights
+### ✅ Good Insights and Questions
 - "Use RICE framework for feature prioritization"
 - "Build stakeholder alignment through data storytelling"
 - "Implement weekly user interviews for continuous discovery"
 - "Define North Star metric to align team objectives"
 - "Use pre-mortems to identify project risks early"
+- "Ask actionable questions that help you make better decisions with the takeaways from this video"
 
-### ❌ Poor Insights
+### ❌ Poor Insights and Questions
 - "Communication is important" (too generic)
 - "Always listen to users" (obvious)
 - "Work hard and be passionate" (not PM-specific)
 - "Use agile methodology" (too vague)
 - "Be a good leader" (not actionable)
+- "What did you learn from this?" (not actionable)
+- "What are the key takeaways from this video for my PM career?" (not actionable)
 
 ## Performance Metrics
 

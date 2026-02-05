@@ -87,7 +87,7 @@ outputs_to: [agent_4_synthesis]
     "analysis_time_ms": 13000,
     "model": "gemini-2.0-flash-exp",
     "token_usage": 1600,
-    "expressions_count": 7
+    "expressions_count": 10
   }
 }
 ```
@@ -106,7 +106,7 @@ Agent 1 (Transcript)
 │  1. Receive transcript     │
 │  2. Format with timestamps │
 │  3. Analyze with AI        │
-│  4. Extract 7 expressions  │
+│  4. Extract 10 expressions  │
 │  5. Generate timestamp URLs│
 └────────────────────────────┘
      │
@@ -144,7 +144,7 @@ Transcript (with timestamps in seconds):
 {transcript_text}
 
 Instructions:
-1. Identify 7 advanced English expressions or phrases that are:
+1. Identify 10 advanced English expressions or phrases that are:
    - Professional/business-oriented (not casual or common phrases)
    - Used by executives, thought leaders, or in formal business contexts
    - Useful for Product Managers in presentations, meetings, or stakeholder communication
@@ -167,7 +167,7 @@ Return ONLY a JSON array with this exact structure:
   }}
 ]
 
-Return exactly 7 expressions. Ensure the JSON is valid and properly formatted."""
+Return exactly 10 expressions. Ensure the JSON is valid and properly formatted."""
 ```
 
 ## Implementation
@@ -200,8 +200,8 @@ class EnglishAnalysisSubagent:
             )
             
             # Validate output
-            if not isinstance(expressions, list) or len(expressions) != 7:
-                raise ValueError("Expected exactly 7 expressions")
+            if not isinstance(expressions, list) or len(expressions) != 10:
+                raise ValueError("Expected exactly 10 expressions")
             
             # Verify timestamp URLs are present
             for expr in expressions:
@@ -234,14 +234,16 @@ class EnglishAnalysisSubagent:
 ### ✅ Good Expressions
 - "Move the needle" - Make significant impact
 - "Table stakes" - Minimum requirements
-- "North star metric" - Primary success indicator
-- "Align stakeholders" - Build consensus
 - "De-risk the initiative" - Reduce uncertainty
 - "Socialize the idea" - Build awareness and support
 - "Double-click on that" - Examine in detail
 - "Greenfield opportunity" - New, unexplored area
 - "Low-hanging fruit" - Easy wins
 - "Boil the ocean" - Attempt too much at once
+- "Break the ice" - Make conversation
+- "Break ground" - Start construction
+- "Break the mold" - Deviate from tradition
+- "Break the bank" - Cost too much
 
 ### ❌ Poor Expressions
 - "Good job" (too casual)
@@ -278,7 +280,7 @@ url = generate_timestamp_url("dQw4w9WgXcQ", 125.5)
 | `JSONDecodeError` | Invalid AI response | Retry once, then fail |
 | `TimeoutError` | AI API timeout | Return partial results if available |
 | `RateLimitError` | API rate limit hit | Queue request or return error |
-| `ValidationError` | Wrong number of expressions | Trim or pad to 7 expressions |
+| `ValidationError` | Wrong number of expressions | Trim or pad to 10 expressions |
 | `MissingTimestampError` | Timestamp not found | Use 0 as default |
 
 ## Dependencies
@@ -305,7 +307,7 @@ def test_agent_3():
     result = agent.execute(transcript, "test_video_id")
     
     assert result['success'] == True
-    assert len(result['english_expressions']) == 7
+    assert len(result['english_expressions']) == 10
     assert all('phrase' in expr for expr in result['english_expressions'])
     assert all('timestamp_url' in expr for expr in result['english_expressions'])
 ```
@@ -321,7 +323,7 @@ AGENT_3_CONFIG = {
     "model": "gemini-2.0-flash-exp",
     "temperature": 0.7,
     "max_output_tokens": 2000,
-    "expressions_count": 7,
+    "expressions_count": 10,
     "max_transcript_segments": 200,  # Limit to avoid token limits
     "min_timestamp": 0,
     "max_timestamp": 7200  # 2 hours
