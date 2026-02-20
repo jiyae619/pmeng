@@ -1,4 +1,4 @@
-export default function LoadingAnalysis() {
+export default function LoadingAnalysis({ message = 'Preparing analysis...' }) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-neutral-50">
             <div className="text-center max-w-md">
@@ -22,7 +22,7 @@ export default function LoadingAnalysis() {
                 <div className="space-y-3 text-neutral-600">
                     <div className="flex items-center justify-center gap-2">
                         <div className="w-2 h-2 bg-green-800 rounded-full animate-pulse"></div>
-                        <p className="text-sm">Extracting transcript...</p>
+                        <p className="text-sm">{message}</p>
                     </div>
                     <div className="flex items-center justify-center gap-2">
                         <div className="w-2 h-2 bg-green-800 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>

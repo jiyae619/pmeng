@@ -1,28 +1,20 @@
 import os
 import json
 import re
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+
 
 class AIService:
-    """Service for AI-powered analysis using Google Gemini via the new google-genai SDK."""
+    """Service for AI-powered analysis using Google Gemini."""
     
     def __init__(self):
-        """Initialize Google Gemini client using Vertex AI to support native YouTube URIs."""
-        # Using vertexai allows Part.from_uri to fetch YouTube contents directly
-        project_id = os.getenv('GOOGLE_CLOUD_PROJECT')
-        location = os.getenv('GOOGLE_CLOUD_LOCATION', 'us-central1')
+        """Initialize Google Gemini client with API key from environment."""
+        api_key = os.getenv('GOOGLE_API_KEY')
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY not found in environment variables")
         
-        if not project_id:
-             print("WARNING: GOOGLE_CLOUD_PROJECT not found. Falling back to simple API key (native video URL parsing will fail).")
-             api_key = os.getenv('GOOGLE_API_KEY')
-             if not api_key:
-                 raise ValueError("Neither GOOGLE_CLOUD_PROJECT nor GOOGLE_API_KEY found in environment variables")
-             self.client = genai.Client(api_key=api_key)
-        else:
-             self.client = genai.Client(vertexai=True, project=project_id, location=location)
-             
-        self.model_id = 'gemini-2.5-flash'  # Unified fast and capable model
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-3-flash-preview')
     
     @staticmethod
     def sanitize_json_response(content):
@@ -100,21 +92,23 @@ class AIService:
         print(f"ERROR - Content: {error_context}")
         raise ValueError(f"Failed to parse AI response as JSON after {len(strategies)} attempts: {str(last_error)}")
     
-    def analyze_pm_insights(self, transcript_text=None, video_title=None, video_url=None):
+    def analyze_pm_insights(self, transcript_text, video_title=None):
         """
-        Analyze transcript or video for PM insights.
+        Analyze transcript for PM insights.
         
         Args:
-            transcript_text: Full transcript text (optional if video_url provided)
+            transcript_text: Full transcript text
             video_title: Optional video title for context
-            video_url: YouTube URL to analyze natively (fallback)
             
         Returns:
             List of PM insights (max 5 points)
         """
-        prompt = f"""Analyze this YouTube video and extract the most valuable insights for Product Managers.
+        prompt = f"""Analyze this YouTube video transcript and extract the most valuable insights for Product Managers.
 
 Video Title: {video_title or 'Not provided'}
+
+Transcript:
+{transcript_text}
 
 Instructions:
 1. Identify the TOP 5 most practical and actionable insights for Product Manager career development
@@ -138,32 +132,18 @@ Return ONLY a JSON array with this exact structure:
 Return exactly 5 insights. Ensure the JSON is valid and properly formatted."""
 
         try:
-            # Build contents depending on if we have text or video url
-            contents = []
-            if transcript_text:
-                contents.append(f"Transcript:\n{transcript_text}")
-            elif video_url:
-                contents.append(types.Part.from_uri(file_uri=video_url, mime_type="video/mp4"))
-            else:
-                 raise ValueError("Neither transcript_text nor video_url was provided.")
-            
-            contents.append(prompt)
-            
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=contents,
-                config={
-                    "temperature": 0.7,
-                    "max_output_tokens": 8192,
-                    "response_mime_type": "application/json"
-                }
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.7,
+                    max_output_tokens=2000,
+                    response_mime_type="application/json",  # Force JSON output
+                )
             )
             
             # Extract and sanitize JSON from response
             content = response.text
             print(f"DEBUG - PM Insights raw response: {content[:500]}...")  # Log first 500 chars
-            if hasattr(response, 'candidates') and response.candidates:
-                print(f"DEBUG - Finish Reason: {response.candidates[0].finish_reason}")
             
             # Clean the response
             content = self.sanitize_json_response(content)
@@ -193,18 +173,20 @@ Return exactly 5 insights. Ensure the JSON is valid and properly formatted."""
     
     def analyze_english_expressions(self, transcript_text=None, video_id=None, video_url=None):
         """
-        Analyze transcript or video for advanced English expressions.
+        Analyze transcript for advanced English expressions.
         
         Args:
-            transcript_text: Timestamped transcript text (optional if video_url provided)
+            transcript_text: Timestamped transcript text
             video_id: YouTube video ID for timestamp URLs
-            video_url: YouTube URL to analyze natively (fallback)
+            video_url: YouTube URL to analyze natively (not used in this SDK fallback, but kept for parity)
             
         Returns:
             List of English expressions (max 7)
         """
-        
-        prompt = f"""Analyze this YouTube video and identify advanced English expressions suitable for business and professional settings.
+        prompt = f"""Analyze this YouTube video transcript and identify advanced English expressions suitable for business and professional settings.
+
+Transcript (with timestamps):
+{transcript_text}
 
 Instructions:
 1. Identify 7 advanced English expressions or phrases that are:
@@ -214,7 +196,7 @@ Instructions:
 2. For each expression:
    - Extract the exact phrase used
    - Provide the context/example of how it was used in the video
-   - Include the timestamp (in seconds) where it appears. If uncertain, provide your best reasonable estimate.
+   - Include the timestamp (in seconds) where it appears
 3. Focus on expressions like:
    - Executive communication patterns
    - Persuasive language techniques
@@ -233,32 +215,18 @@ Return ONLY a JSON array with this exact structure:
 Return exactly 7 expressions. Ensure the JSON is valid and properly formatted."""
 
         try:
-            contents = []
-            if transcript_text:
-                contents.append(f"Transcript (with timestamps):\n{transcript_text}")
-
-            elif video_url:
-                contents.append(types.Part.from_uri(file_uri=video_url, mime_type="video/mp4"))
-            else:
-                 raise ValueError("Neither transcript_data nor video_url was provided.")
-            
-            contents.append(prompt)
-
-            response = self.client.models.generate_content(
-                model=self.model_id,
-                contents=contents,
-                config={
-                    "temperature": 0.7,
-                    "max_output_tokens": 8192,
-                    "response_mime_type": "application/json"
-                }
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.7,
+                    max_output_tokens=2000,
+                    response_mime_type="application/json",  # Force JSON output
+                )
             )
             
             # Extract and sanitize JSON from response
             content = response.text
             print(f"DEBUG - English Expressions raw response: {content[:500]}...")
-            if hasattr(response, 'candidates') and response.candidates:
-                print(f"DEBUG - English Expressions Finish Reason: {response.candidates[0].finish_reason}")
             
             # Clean the response
             content = self.sanitize_json_response(content)

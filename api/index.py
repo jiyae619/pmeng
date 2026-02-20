@@ -11,7 +11,8 @@ load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React frontend
+cors_origin = os.getenv("VITE_API_URL") or os.getenv("VERCEL_URL") or "*"
+CORS(app, resources={r"/api/*": {"origins": cors_origin}})
 
 # Initialize services
 youtube_service = YouTubeService()
