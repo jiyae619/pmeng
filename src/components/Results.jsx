@@ -8,7 +8,7 @@ export default function Results({ data, onBack }) {
     const [exportError, setExportError] = useState(null)
     const [notionUrl, setNotionUrl] = useState(null)
     const playerRef = useRef(null)
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+    const API_URL = import.meta.env.VITE_API_URL || ''
 
     // YouTube Player API integration
     useEffect(() => {
@@ -61,6 +61,16 @@ export default function Results({ data, onBack }) {
         setExportError(null)
         setNotionUrl(null)
 
+        const accessToken = localStorage.getItem('notion_access_token')
+
+        if (!accessToken) {
+            // Redirect to OAuth
+            const clientId = import.meta.env.VITE_NOTION_CLIENT_ID
+            const redirectUri = encodeURIComponent(window.location.origin + '/notion-callback')
+            window.location.href = `https://api.notion.com/v1/oauth/authorize?client_id=${clientId}&response_type=code&owner=user&redirect_uri=${redirectUri}`
+            return
+        }
+
         try {
             const response = await fetch(`${API_URL}/api/export/notion`, {
                 method: 'POST',
@@ -68,7 +78,8 @@ export default function Results({ data, onBack }) {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    analysis_data: data
+                    analysis_data: data,
+                    access_token: accessToken
                 })
             })
 
@@ -81,6 +92,10 @@ export default function Results({ data, onBack }) {
             if (result.success) {
                 setNotionUrl(result.notion_url)
             } else {
+                if (response.status === 401) {
+                    localStorage.removeItem('notion_access_token')
+                    throw new Error('Notion access revoked or expired. Please reconnect.')
+                }
                 throw new Error(result.error || 'Export failed')
             }
         } catch (err) {
@@ -89,6 +104,8 @@ export default function Results({ data, onBack }) {
             setIsExporting(false)
         }
     }
+
+    const hasNotionToken = !!localStorage.getItem('notion_access_token')
 
     return (
         <div className="min-h-screen flex flex-col font-sans transition-colors duration-500 text-[#141414] bg-[#E4E3E0]">
@@ -133,7 +150,7 @@ export default function Results({ data, onBack }) {
                                 ) : (
                                     <>
                                         <iconify-icon icon="solar:database-bold" width="24"></iconify-icon>
-                                        <span>Save to Notion</span>
+                                        <span>{hasNotionToken ? "Save to Notion" : "Connect to Notion"}</span>
                                     </>
                                 )}
                             </button>

@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+import requests
+import base64
 
 from services.youtube_service import YouTubeService
 from services.ai_service import AIService
@@ -118,21 +120,80 @@ def analyze_video():
         }), 500
 
 
+@app.route('/api/notion/auth', methods=['POST'])
+def notion_auth():
+    """
+    Exchange Notion OAuth code for an access token.
+    """
+    try:
+        data = request.get_json()
+        code = data.get('code')
+        
+        client_id = os.getenv('NOTION_CLIENT_ID')
+        client_secret = os.getenv('NOTION_CLIENT_SECRET')
+        redirect_uri = os.getenv('NOTION_REDIRECT_URI')
+
+        if not all([client_id, client_secret, redirect_uri, code]):
+            return jsonify({
+                "success": False,
+                "error": "Missing OAuth parameters (code, client_id, client_secret, or redirect_uri)"
+            }), 400
+
+        # Encode credentials for Basic Auth
+        credentials = f"{client_id}:{client_secret}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+        response = requests.post(
+            "https://api.notion.com/v1/oauth/token",
+            headers={
+                "Authorization": f"Basic {encoded_credentials}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "grant_type": "authorization_code",
+                "code": code,
+                "redirect_uri": redirect_uri
+            }
+        )
+        
+        token_data = response.json()
+        
+        if "error" in token_data:
+            return jsonify({
+                "success": False,
+                "error": f"Notion API Error: {token_data.get('error_description', token_data.get('error'))}"
+            }), 400
+
+        return jsonify({
+            "success": True,
+            "access_token": token_data.get('access_token'),
+            "workspace_name": token_data.get('workspace_name'),
+            "workspace_icon": token_data.get('workspace_icon')
+        })
+
+    except Exception as e:
+        print(f"Notion auth error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Failed to authenticate with Notion: {str(e)}"
+        }), 500
+
+
 @app.route('/api/export/notion', methods=['POST'])
 def export_to_notion():
     """
-    Export analysis data to a Notion page.
+    Export analysis data to a user's Notion page.
     """
     try:
         data = request.get_json()
         analysis_data = data.get('analysis_data')
-        parent_page_id = os.getenv('NOTION_PARENT_PAGE_ID')
+        access_token = data.get('access_token')
         
-        if not parent_page_id:
+        if not access_token:
             return jsonify({
                 "success": False,
-                "error": "NOTION_PARENT_PAGE_ID not found in environment"
-            }), 500
+                "error": "Notion access token is required"
+            }), 401
             
         if not analysis_data:
             return jsonify({
@@ -140,8 +201,22 @@ def export_to_notion():
                 "error": "analysis_data is required"
             }), 400
             
+        # Initialize user-specific Notion client
+        user_notion_service = NotionService(auth_token=access_token)
+        
+        # Determine parent page. For OAuth, users have shared specific pages.
+        # We will pick the first shared page we find.
+        pages = user_notion_service.search_pages()
+        if not pages:
+            return jsonify({
+                "success": False,
+                "error": "No accessible pages found in Notion. Please share a page with the integration."
+            }), 404
+            
+        parent_page_id = pages[0]['id']
+            
         # Create Notion page
-        result = notion_service.create_analysis_page(parent_page_id, analysis_data)
+        result = user_notion_service.create_analysis_page(parent_page_id, analysis_data)
         
         return jsonify({
             "success": True,
@@ -154,6 +229,7 @@ def export_to_notion():
             "success": False,
             "error": f"Failed to export to Notion: {str(e)}"
         }), 500
+
 
 
 if __name__ == '__main__':

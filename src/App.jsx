@@ -3,8 +3,9 @@ import { ArrowRight } from 'lucide-react'
 import { motion } from 'motion/react'
 import Results from './components/Results'
 import LoadingAnalysis from './components/LoadingAnalysis'
+import NotionCallback from './components/NotionCallback'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function App() {
   const [youtubeLink, setYoutubeLink] = useState('')
@@ -74,6 +75,10 @@ function App() {
       if (match) return match[1]
     }
     return null
+  }
+
+  if (window.location.pathname === '/notion-callback') {
+    return <NotionCallback />
   }
 
   if (loading) {
