@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 export default function NotionCallback() {
     const [status, setStatus] = useState('Authenticating with Notion...')
     const API_URL = import.meta.env.VITE_API_URL || ''
+    const hasExchanged = useRef(false)
 
     useEffect(() => {
+        if (hasExchanged.current) return
+        hasExchanged.current = true
+
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
         const error = urlParams.get('error')
