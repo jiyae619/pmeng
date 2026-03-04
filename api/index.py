@@ -7,7 +7,6 @@ import base64
 
 from services.youtube_service import YouTubeService
 from services.ai_service import AIService
-from services.notion_service import NotionService
 
 
 # Load environment variables
@@ -184,6 +183,7 @@ def export_to_notion():
         if not analysis_data:
             return jsonify({"success": False, "error": "analysis_data is required"}), 400
 
+        from services.notion_service import NotionService
         user_notion_service = NotionService(auth_token=access_token)
 
         pages = user_notion_service.search_pages()
