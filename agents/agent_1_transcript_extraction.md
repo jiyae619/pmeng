@@ -24,7 +24,9 @@ outputs_to: [agent_2_pm_skills, agent_3_english_analysis]
    - Handle edge cases (shortened URLs, embed URLs, etc.)
 
 2. **Transcript Retrieval**
-   - Fetch English transcripts (manual or auto-generated)
+   - Process the video to extract the spoken audio
+   - Transcribe the spoken audio into text (manual or auto-generated)
+   - Review the generated transcript for accuracy and clarity. 
    - Preserve timestamp information
    - Handle missing or disabled transcripts
 

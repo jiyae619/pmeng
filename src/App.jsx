@@ -1,10 +1,15 @@
 import { useState } from 'react'
+import { ArrowRight } from 'lucide-react'
+import { motion } from 'motion/react'
 import Results from './components/Results'
 import LoadingAnalysis from './components/LoadingAnalysis'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 
 function App() {
   const [youtubeLink, setYoutubeLink] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('')
   const [error, setError] = useState(null)
   const [analysisData, setAnalysisData] = useState(null)
 
@@ -17,13 +22,14 @@ function App() {
     }
 
     setLoading(true)
+    setLoadingMessage('Fetching transcript from YouTube...')
     setError(null)
 
     try {
-      const response = await fetch('http://localhost:5001/api/analyze', {
+      const response = await fetch(`${API_URL}/api/analyze`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           youtube_url: youtubeLink
@@ -33,7 +39,7 @@ function App() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze video')
+        throw new Error(data.error || 'Analysis failed')
       }
 
       if (data.success) {
@@ -45,237 +51,150 @@ function App() {
       setError(err.message)
     } finally {
       setLoading(false)
+      setLoadingMessage('')
     }
   }
 
-  const handleBack = () => {
-    setAnalysisData(null)
-    setYoutubeLink('')
-    setError(null)
+  const handleSeek = (timestamp) => {
+    const videoId = extractVideoId(youtubeLink)
+    if (videoId) {
+      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(timestamp)}s`
+      window.open(youtubeUrl, '_blank')
+    }
   }
 
-  // Show loading state
+  const extractVideoId = (url) => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /^([a-zA-Z0-9_-]{11})$/
+    ]
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match) return match[1]
+    }
+    return null
+  }
+
   if (loading) {
-    return <LoadingAnalysis />
+    return <LoadingAnalysis message={loadingMessage} />
   }
 
-  // Show results
   if (analysisData) {
-    return <Results data={analysisData} onBack={handleBack} />
+    return (
+      <Results
+        data={analysisData}
+        onBack={() => {
+          setAnalysisData(null)
+          setYoutubeLink('')
+        }}
+      />
+    )
   }
 
-  // Show landing page
   return (
-    <div className="overflow-x-hidden selection:bg-emerald-900 selection:text-white text-zinc-900">
-      {/* Navigation */}
-      <nav className="flex md:px-12 w-full z-50 pt-8 pr-6 pb-4 pl-6 relative items-center justify-between">
-        <div className="group relative cursor-pointer select-none">
-          <h1 className="uppercase leading-none z-10 text-4xl text-neutral-900 tracking-tighter font-display relative">
-            PM-ENG
-          </h1>
+    <div className="min-h-screen flex flex-col justify-between p-6 md:p-12 font-sans transition-colors duration-500 text-[#141414]">
+      {/* Top Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start gap-8">
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-[14vw] md:text-[10vw] leading-[0.85] font-display font-black tracking-normal uppercase m-0"
+        >
+          Product<br />Manager
+        </motion.h1>
+      </div>
+
+      {/* Middle Section - URL Input */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        className="flex-1 flex flex-col items-center justify-center w-full max-w-5xl mx-auto my-16 z-10"
+      >
+        <form
+          onSubmit={handleSubmit}
+          className="w-full relative group"
+        >
+          <input
+            id="youtube-url"
+            type="url"
+            value={youtubeLink}
+            onChange={(e) => setYoutubeLink(e.target.value)}
+            placeholder="ENTER YOUTUBE URL..."
+            className="w-full bg-transparent border-b-4 border-[#141414] text-lg md:text-xl py-4 md:py-8 outline-none placeholder:text-[#141414]/30 tracking-normal uppercase transition-all focus:border-green-800"
+            disabled={loading}
+            required
+          />
+          <button
+            type="submit"
+            disabled={!youtubeLink.trim() || loading}
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-14 h-14 md:w-24 md:h-24 bg-[#141414] text-[#E4E3E0] rounded-full flex items-center justify-center hover:bg-green-800 hover:text-white transition-colors group-focus-within:bg-green-800 group-focus-within:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowRight className="w-8 h-8 md:w-12 md:h-12" />
+          </button>
+        </form>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 w-full text-center"
+          >
+            <p className="text-red-600 font-bold text-sm tracking-widest uppercase">{error}</p>
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* Bottom Section */}
+      <div className="flex flex-col-reverse md:flex-row justify-between items-end gap-8 relative">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="max-w-sm text-lg md:text-xl font-medium leading-snug text-justify md:pb-4"
+        >
+          Learn PM Insights & Advanced English from YouTube Videos
+        </motion.div>
+
+        <div className="relative">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+            className="text-[14vw] md:text-[10vw] leading-[0.85] font-display font-black tracking-normal uppercase m-0 text-right"
+          >
+            English
+          </motion.h1>
+
+          {/* Decorative SVG */}
+          <motion.svg
+            initial={{ opacity: 0, rotate: -90 }}
+            animate={{ opacity: 0.7, rotate: 0 }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="absolute -top-16 -left-8 md:-top-24 md:-left-16 w-20 h-20 md:w-32 md:h-32 animate-[spin_15s_linear_infinite] pointer-events-none text-green-800"
+            viewBox="0 0 68 68"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g stroke="currentColor" strokeWidth="1">
+              <path d="M34 0V68"></path>
+              <path d="M68 34H0"></path>
+              <path d="M25.2876 1.13379L42.706 66.865"></path>
+              <path d="M66.8651 25.2908L1.13477 42.7092"></path>
+              <path d="M43.0516 1.22656L24.9492 66.7736"></path>
+              <path d="M66.7736 43.0512L1.22656 24.9487"></path>
+              <path d="M51.4533 4.81885L16.5557 63.1812"></path>
+              <path d="M63.1821 51.4489L4.81982 16.5513"></path>
+              <path d="M58.0607 9.9751L9.94385 58.0248"></path>
+              <path d="M58.0228 58.0585L9.97314 9.94165"></path>
+              <path d="M63.1397 16.4749L4.86816 51.524"></path>
+              <path d="M51.5228 63.1358L16.4736 4.86426"></path>
+            </g>
+          </motion.svg>
         </div>
-
-        <ul className="hidden flex-col items-end space-y-1 text-sm font-medium tracking-wide text-neutral-500 md:flex">
-          <li>
-            <a href="#skills" className="transition-colors hover:text-neutral-900">SKILLS</a>
-          </li>
-          <li>
-            <a href="#expressions" className="transition-colors hover:text-neutral-900">
-              EXPRESSIONS
-            </a>
-          </li>
-        </ul>
-
-        <button className="md:hidden">
-          <iconify-icon icon="solar:hamburger-menu-linear" width="28"></iconify-icon>
-        </button>
-      </nav>
-
-      {/* Main Content */}
-      <main className="md:px-12 md:pt-20 max-w-[1400px] mr-auto ml-auto pt-12 pr-6 pb-24 pl-6 relative">
-        <div className="z-10 leading-[0.85] relative w-full text-center mb-16">
-          <h2 className="uppercase md:text-9xl text-7xl text-neutral-900 tracking-tighter font-display">
-            LEGENDary PM
-          </h2>
-
-          {/* Script Overlay */}
-          <div className="relative h-8 w-full select-none md:h-16">
-            <span className="-top-2 z-20 transform md:-top-6 md:text-8xl text-6xl text-green-800 font-script mix-blend-multiply absolute left-1/2 -translate-x-1/2 -rotate-3">
-              Unstoppable
-            </span>
-          </div>
-
-          <h2 className="uppercase md:text-9xl z-10 text-5xl text-neutral-900 tracking-tighter font-display relative">
-            TRUE GRIT
-          </h2>
-
-          <div className="mt-8 max-w-lg mx-auto">
-            <p className="leading-relaxed text-lg font-normal text-neutral-600 font-inter">
-              Summarize. Learn the PM skills.
-              <br />
-              And practice your advanced English.
-            </p>
-          </div>
-
-          {/* YouTube Link Input */}
-          <div className="z-20 w-full max-w-md mx-auto mt-8 relative">
-            <label htmlFor="youtube-link" className="block text-sm font-medium text-neutral-700 mb-3">
-              Copy and paste your Youtube link below!
-            </label>
-
-            <form onSubmit={handleSubmit}>
-              <div className="input-wrapper group flex items-center rounded-none border border-neutral-300 bg-white p-1 transition-all duration-200">
-                <div className="flex h-10 w-10 items-center justify-center text-neutral-400">
-                  <iconify-icon icon="solar:link-linear" width="20"></iconify-icon>
-                </div>
-                <input
-                  type="text"
-                  placeholder="youtube.com/watch?v=..."
-                  className="min-w-0 border-none placeholder-neutral-400 focus:ring-0 text-sm text-neutral-900 bg-transparent w-full h-10 pt-0 pr-0 pb-0 pl-0"
-                  id="youtube-link"
-                  value={youtubeLink}
-                  onChange={(e) => setYoutubeLink(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex h-10 items-center gap-2 bg-neutral-900 px-5 text-xs font-medium uppercase tracking-wide text-white transition-all active:scale-95 hover:bg-green-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Analyze
-                  <iconify-icon icon="solar:arrow-right-linear" width="16"></iconify-icon>
-                </button>
-              </div>
-
-              {/* Error Message */}
-              {error && (
-                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-sm">
-                  <p className="text-sm text-red-700 flex items-center gap-2">
-                    <iconify-icon icon="solar:danger-circle-bold" width="16"></iconify-icon>
-                    {error}
-                  </p>
-                </div>
-              )}
-            </form>
-          </div>
-        </div>
-
-        {/* Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 lg:gap-x-12 gap-y-16 items-start mt-24">
-          {/* Left Column: PM Skills */}
-          <div className="lg:col-span-6 lg:pt-0 pt-12 relative">
-            <div className="relative w-full max-w-lg">
-              {/* Green Box Background */}
-              <div className="absolute top-12 left-0 right-12 bottom-0 z-0 shadow-2xl bg-green-800"></div>
-
-              {/* Content Card */}
-              <div className="relative z-10 -translate-y-6 translate-x-6 transform bg-white p-8 shadow-lg">
-                <h3 className="text-3xl font-display uppercase tracking-tight text-neutral-900 mb-4">
-                  Master PM Skills
-                </h3>
-                <p className="text-neutral-600 leading-relaxed mb-4">
-                  Extract key insights from product management videos. Learn frameworks, strategies, and best practices from industry leaders.
-                </p>
-                <ul className="space-y-2 text-neutral-700">
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-green-800 mt-1"></iconify-icon>
-                    <span>Product strategy & roadmapping</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-green-800 mt-1"></iconify-icon>
-                    <span>Stakeholder communication</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-green-800 mt-1"></iconify-icon>
-                    <span>Data-driven decision making</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-green-800 mt-1"></iconify-icon>
-                    <span>User research & validation</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: Advanced English */}
-          <div className="lg:col-span-6 relative">
-            <div className="relative w-full max-w-lg ml-auto">
-              {/* Green Box Background */}
-              <div className="absolute top-12 right-0 left-12 bottom-0 z-0 shadow-2xl bg-emerald-700"></div>
-
-              {/* Content Card */}
-              <div className="relative z-10 -translate-y-6 -translate-x-6 transform bg-white p-8 shadow-lg">
-                <h3 className="text-3xl font-display uppercase tracking-tight text-neutral-900 mb-4">
-                  Advanced English
-                </h3>
-                <p className="text-neutral-600 leading-relaxed mb-4">
-                  Build your business vocabulary with expressions and phrases used by top executives and thought leaders.
-                </p>
-                <ul className="space-y-2 text-neutral-700">
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-emerald-700 mt-1"></iconify-icon>
-                    <span>Executive communication patterns</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-emerald-700 mt-1"></iconify-icon>
-                    <span>Business idioms & expressions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-emerald-700 mt-1"></iconify-icon>
-                    <span>Persuasive language techniques</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <iconify-icon icon="solar:check-circle-bold" width="20" className="text-emerald-700 mt-1"></iconify-icon>
-                    <span>Professional presentation skills</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* How It Works Section */}
-        <div className="mt-32 text-center">
-          <h2 className="uppercase md:text-7xl text-5xl text-neutral-900 tracking-tighter font-display mb-12">
-            How It Works
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-green-800 transform translate-y-2 translate-x-2 transition-transform group-hover:translate-y-1 group-hover:translate-x-1"></div>
-              <div className="relative bg-white p-8 border border-neutral-300">
-                <div className="text-6xl font-display text-green-800 mb-4">01</div>
-                <h3 className="text-xl font-display uppercase mb-3">Paste Link</h3>
-                <p className="text-neutral-600 text-sm">
-                  Copy any YouTube video URL about product management, leadership, or business strategy.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative group">
-              <div className="absolute inset-0 bg-green-800 transform translate-y-2 translate-x-2 transition-transform group-hover:translate-y-1 group-hover:translate-x-1"></div>
-              <div className="relative bg-white p-8 border border-neutral-300">
-                <div className="text-6xl font-display text-green-800 mb-4">02</div>
-                <h3 className="text-xl font-display uppercase mb-3">AI Analysis</h3>
-                <p className="text-neutral-600 text-sm">
-                  Our AI extracts key takeaways, frameworks, and advanced English expressions from the content.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative group">
-              <div className="absolute inset-0 bg-green-800 transform translate-y-2 translate-x-2 transition-transform group-hover:translate-y-1 group-hover:translate-x-1"></div>
-              <div className="relative bg-white p-8 border border-neutral-300">
-                <div className="text-6xl font-display text-green-800 mb-4">03</div>
-                <h3 className="text-xl font-display uppercase mb-3">Learn & Grow</h3>
-                <p className="text-neutral-600 text-sm">
-                  Review structured summaries, practice new vocabulary, and level up your PM skills.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+      </div>
     </div>
   )
 }

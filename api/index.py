@@ -5,19 +5,18 @@ import os
 
 from services.youtube_service import YouTubeService
 from services.ai_service import AIService
-from services.notion_service import NotionService
 
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-CORS(app)  # Enable CORS for React frontend
+cors_origin = os.getenv("VITE_API_URL") or os.getenv("VERCEL_URL") or "*"
+CORS(app, resources={r"/api/*": {"origins": cors_origin}})
 
 # Initialize services
 youtube_service = YouTubeService()
 ai_service = AIService()
-notion_service = NotionService()
 
 
 @app.route('/api/health', methods=['GET'])
@@ -115,44 +114,6 @@ def analyze_video():
         return jsonify({
             "success": False,
             "error": f"Unexpected error: {str(e)}"
-        }), 500
-
-
-@app.route('/api/export/notion', methods=['POST'])
-def export_to_notion():
-    """
-    Export analysis data to a Notion page.
-    """
-    try:
-        data = request.get_json()
-        analysis_data = data.get('analysis_data')
-        parent_page_id = os.getenv('NOTION_PARENT_PAGE_ID')
-        
-        if not parent_page_id:
-            return jsonify({
-                "success": False,
-                "error": "NOTION_PARENT_PAGE_ID not found in environment"
-            }), 500
-            
-        if not analysis_data:
-            return jsonify({
-                "success": False,
-                "error": "analysis_data is required"
-            }), 400
-            
-        # Create Notion page
-        result = notion_service.create_analysis_page(parent_page_id, analysis_data)
-        
-        return jsonify({
-            "success": True,
-            "notion_url": result.get('url')
-        })
-        
-    except Exception as e:
-        print(f"Notion export error: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": f"Failed to export to Notion: {str(e)}"
         }), 500
 
 

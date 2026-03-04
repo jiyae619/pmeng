@@ -1,0 +1,125 @@
+### HTTP request
+```
+GET https://www.googleapis.com/youtube/v3/captions/id
+```
+
+### Authorization
+This request requires authorization with at least one of the following scopes ([read more about authentication and authorization](https://developers.google.com/youtube/v3/guides/authentication)).
+
+```
+https://www.googleapis.com/auth/youtube.force-ssl
+```
+
+
+```
+https://www.googleapis.com/auth/youtubepartner
+```
+
+### Parameters
+The table below lists the parameters that this query supports. All of the parameters listed are query parameters.
+
+```
+id
+```
+
+
+```
+string
+```
+
+
+```
+id
+```
+
+
+```
+[id](https://developers.google.com/youtube/v3/docs/captions#id)
+```
+
+[id](https://developers.google.com/youtube/v3/docs/captions#id)
+
+```
+caption
+```
+
+
+```
+onBehalfOfContentOwner
+```
+
+
+```
+string
+```
+
+[authorized request](https://developers.google.com/youtube/v3/guides/authentication)
+
+```
+onBehalfOfContentOwner
+```
+
+
+```
+tfmt
+```
+
+
+```
+string
+```
+
+
+```
+tfmt
+```
+
+- sbv – SubViewer subtitle
+- scc – Scenarist Closed Caption format
+- srt – SubRip subtitle
+- ttml – Timed Text Markup Language caption
+- vtt – Web Video Text Tracks caption
+
+```
+sbv
+```
+
+
+```
+scc
+```
+
+
+```
+srt
+```
+
+
+```
+ttml
+```
+
+
+```
+vtt
+```
+
+
+```
+tlang
+```
+
+
+```
+string
+```
+
+
+```
+tlang
+```
+
+[ISO 639-1 two-letter language code](http://www.loc.gov/standards/iso639-2/php/code_list.php)
+
+### Request body
+Do not provide a request body when calling this method.
