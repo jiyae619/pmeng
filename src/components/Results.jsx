@@ -4,7 +4,11 @@ import EnglishExpressions from './EnglishExpressions'
 
 export default function Results({ data, onBack }) {
     const [activeTab, setActiveTab] = useState('insights')
+    const [isExporting, setIsExporting] = useState(false)
+    const [exportError, setExportError] = useState(null)
+    const [notionUrl, setNotionUrl] = useState(null)
     const playerRef = useRef(null)
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
 
     // YouTube Player API integration
     useEffect(() => {
@@ -52,96 +56,157 @@ export default function Results({ data, onBack }) {
         }
     }
 
+    const handleExportToNotion = async () => {
+        setIsExporting(true)
+        setExportError(null)
+        setNotionUrl(null)
+
+        try {
+            const response = await fetch(`${API_URL}/api/export/notion`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    analysis_data: data
+                })
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Export failed')
+            }
+
+            if (result.success) {
+                setNotionUrl(result.notion_url)
+            } else {
+                throw new Error(result.error || 'Export failed')
+            }
+        } catch (err) {
+            setExportError(err.message)
+        } finally {
+            setIsExporting(false)
+        }
+    }
+
     return (
-        <div className="min-h-screen bg-neutral-50">
+        <div className="min-h-screen flex flex-col font-sans transition-colors duration-500 text-[#141414] bg-[#E4E3E0]">
             {/* Header */}
-            <nav className="bg-white border-b border-neutral-200">
-                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <nav className="border-b-4 border-[#141414]">
+                <div className="px-6 md:px-12 py-6 flex items-center justify-between">
                     <button
                         onClick={onBack}
-                        className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 transition-colors"
+                        className="flex items-center gap-2 text-[#141414] hover:text-green-800 transition-colors uppercase font-bold tracking-widest text-sm"
                     >
-                        <iconify-icon icon="solar:arrow-left-linear" width="20"></iconify-icon>
-                        <span className="font-medium">Back</span>
+                        <iconify-icon icon="solar:arrow-left-linear" width="24"></iconify-icon>
+                        <span>Back to Start</span>
                     </button>
-                    <h1 className="text-2xl font-display uppercase tracking-tight text-neutral-900">
-                        PM-ENG
+                    <h1 className="text-3xl md:text-5xl font-display font-black uppercase tracking-tight m-0">
+                        PM X English
                     </h1>
-                    <div className="w-20"></div> {/* Spacer for centering */}
+                    <div className="flex items-center gap-4">
+                        {notionUrl ? (
+                            <a
+                                href={notionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-green-800 font-bold uppercase tracking-widest text-sm hover:opacity-70 transition-opacity"
+                            >
+                                <iconify-icon icon="solar:check-circle-bold" width="24"></iconify-icon>
+                                <span>Saved</span>
+                            </a>
+                        ) : (
+                            <button
+                                onClick={handleExportToNotion}
+                                disabled={isExporting}
+                                className={`flex items-center gap-2 font-bold uppercase tracking-widest text-sm transition-all ${isExporting
+                                    ? 'text-[#141414]/40 cursor-not-allowed'
+                                    : 'text-[#141414] hover:text-green-800'
+                                    }`}
+                            >
+                                {isExporting ? (
+                                    <>
+                                        <iconify-icon icon="solar:refresh-linear" width="24" className="animate-spin"></iconify-icon>
+                                        <span>Saving</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <iconify-icon icon="solar:database-bold" width="24"></iconify-icon>
+                                        <span>Save to Notion</span>
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
                 </div>
+                {exportError && (
+                    <div className="bg-[#141414] text-[#E4E3E0] px-6 md:px-12 py-2">
+                        <p className="text-xs uppercase tracking-widest font-bold text-center">
+                            Failed to export: {exportError}
+                        </p>
+                    </div>
+                )}
             </nav>
 
-            {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-6 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    {/* Left Column: Video Player */}
-                    <div className="lg:col-span-5">
-                        <div className="sticky top-8">
-                            {/* YouTube Player */}
-                            <div className="bg-black aspect-video rounded-lg overflow-hidden shadow-lg mb-4">
-                                <div id="youtube-player" className="w-full h-full"></div>
-                            </div>
+            {/* Main Content Grid */}
+            <main className="flex-1 flex flex-col lg:flex-row">
+                {/* Left Column: Video Player & Info */}
+                <div className="w-full lg:w-5/12 border-b-4 lg:border-b-0 lg:border-r-4 border-[#141414] flex flex-col">
+                    <div className="sticky top-0">
+                        {/* Video Info Header */}
+                        <div className="p-6 md:p-12 border-b-4 border-[#141414]">
+                            <h2 className="text-2xl md:text-4xl font-display font-black uppercase leading-tight tracking-tight mb-4" title={data.video?.title || "Analysis Complete"}>
+                                {data.video?.title || "Analysis Complete"}
+                            </h2>
+                            <p className="text-sm md:text-base opacity-70 uppercase tracking-widest font-medium max-w-sm">
+                                Review insights and learn vocabulary. Click timestamps to jump to specific points.
+                            </p>
+                        </div>
 
-                            {/* Video Info */}
-                            <div className="bg-white p-4 rounded-lg shadow-sm">
-                                <div className="flex items-start gap-3">
-                                    <iconify-icon
-                                        icon="solar:video-frame-bold"
-                                        width="24"
-                                        className="text-green-800 mt-1"
-                                    ></iconify-icon>
-                                    <div>
-                                        <h2 className="font-medium text-neutral-900 mb-1">
-                                            Analysis Complete
-                                        </h2>
-                                        <p className="text-sm text-neutral-600">
-                                            Click timestamp buttons to jump to specific moments in the video
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+                        {/* YouTube Player Wrapper */}
+                        <div className="bg-[#141414] aspect-video w-full">
+                            <div id="youtube-player" className="w-full h-full"></div>
                         </div>
                     </div>
+                </div>
 
-                    {/* Right Column: Analysis */}
-                    <div className="lg:col-span-7">
-                        {/* Tabs */}
-                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                            <div className="border-b border-neutral-200">
-                                <div className="flex">
-                                    <button
-                                        onClick={() => setActiveTab('insights')}
-                                        className={`flex-1 px-6 py-4 font-display uppercase tracking-wide text-sm transition-colors ${activeTab === 'insights'
-                                            ? 'bg-green-800 text-white'
-                                            : 'bg-white text-neutral-600 hover:bg-neutral-50'
-                                            }`}
-                                    >
-                                        PM Insights
-                                    </button>
-                                    <button
-                                        onClick={() => setActiveTab('expressions')}
-                                        className={`flex-1 px-6 py-4 font-display uppercase tracking-wide text-sm transition-colors ${activeTab === 'expressions'
-                                            ? 'bg-emerald-700 text-white'
-                                            : 'bg-white text-neutral-600 hover:bg-neutral-50'
-                                            }`}
-                                    >
-                                        English Expressions
-                                    </button>
-                                </div>
-                            </div>
+                {/* Right Column: Analysis */}
+                <div className="w-full lg:w-7/12 flex flex-col">
+                    {/* Massive Tabs */}
+                    <div className="grid grid-cols-2 border-b-4 border-[#141414]">
+                        <button
+                            onClick={() => setActiveTab('insights')}
+                            className={`p-4 md:p-6 font-display font-black uppercase text-xl md:text-2xl text-left border-r-4 border-[#141414] transition-colors leading-[0.85] ${activeTab === 'insights'
+                                ? 'bg-green-800 text-[#E4E3E0]'
+                                : 'bg-transparent text-[#141414] hover:bg-[#141414]/5'
+                                }`}
+                        >
+                            <span className="opacity-50 text-sm md:text-base block mb-1">01.</span>
+                            PM<br />Insights
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('expressions')}
+                            className={`p-4 md:p-6 font-display font-black uppercase text-xl md:text-2xl text-left transition-colors leading-[0.85] ${activeTab === 'expressions'
+                                ? 'bg-green-800 text-[#E4E3E0]'
+                                : 'bg-transparent text-[#141414] hover:bg-[#141414]/5'
+                                }`}
+                        >
+                            <span className="opacity-50 text-sm md:text-base block mb-1">02.</span>
+                            English<br />Expressions
+                        </button>
+                    </div>
 
-                            {/* Tab Content */}
-                            <div className="p-6">
-                                {activeTab === 'insights' ? (
-                                    <PMInsights insights={data.pm_insights} />
-                                ) : (
-                                    <EnglishExpressions
-                                        expressions={data.english_expressions}
-                                        onTimestampClick={handleTimestampClick}
-                                    />
-                                )}
-                            </div>
-                        </div>
+                    {/* Tab Content Area */}
+                    <div className="p-6 md:p-12 flex-1">
+                        {activeTab === 'insights' ? (
+                            <PMInsights insights={data.pm_insights} />
+                        ) : (
+                            <EnglishExpressions
+                                expressions={data.english_expressions}
+                                onTimestampClick={handleTimestampClick}
+                            />
+                        )}
                     </div>
                 </div>
             </main>

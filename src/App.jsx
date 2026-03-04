@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ArrowRight } from 'lucide-react'
+import { motion } from 'motion/react'
 import Results from './components/Results'
 import LoadingAnalysis from './components/LoadingAnalysis'
 
@@ -74,67 +76,124 @@ function App() {
     return null
   }
 
+  if (loading) {
+    return <LoadingAnalysis message={loadingMessage} />
+  }
+
+  if (analysisData) {
+    return (
+      <Results
+        data={analysisData}
+        onBack={() => {
+          setAnalysisData(null)
+          setYoutubeLink('')
+        }}
+      />
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-pink-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
-            PM-ENG
-          </h1>
-          <p className="text-xl text-gray-600">
-            Learn PM Skills & Advanced English from YouTube Videos
-          </p>
+    <div className="min-h-screen flex flex-col justify-between p-6 md:p-12 font-sans transition-colors duration-500 text-[#141414]">
+      {/* Top Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start gap-8">
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="text-[14vw] md:text-[10vw] leading-[0.85] font-display font-black tracking-normal uppercase m-0"
+        >
+          Product<br />Manager
+        </motion.h1>
+      </div>
 
-        </header>
+      {/* Middle Section - URL Input */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+        className="flex-1 flex flex-col items-center justify-center w-full max-w-5xl mx-auto my-16 z-10"
+      >
+        <form
+          onSubmit={handleSubmit}
+          className="w-full relative group"
+        >
+          <input
+            id="youtube-url"
+            type="url"
+            value={youtubeLink}
+            onChange={(e) => setYoutubeLink(e.target.value)}
+            placeholder="ENTER YOUTUBE URL..."
+            className="w-full bg-transparent border-b-4 border-[#141414] text-lg md:text-xl py-4 md:py-8 outline-none placeholder:text-[#141414]/30 tracking-normal uppercase transition-all focus:border-green-800"
+            disabled={loading}
+            required
+          />
+          <button
+            type="submit"
+            disabled={!youtubeLink.trim() || loading}
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-14 h-14 md:w-24 md:h-24 bg-[#141414] text-[#E4E3E0] rounded-full flex items-center justify-center hover:bg-green-800 hover:text-white transition-colors group-focus-within:bg-green-800 group-focus-within:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ArrowRight className="w-8 h-8 md:w-12 md:h-12" />
+          </button>
+        </form>
 
-        {/* Main Content */}
-        <>
-          {/* Input Form */}
-          <div className="max-w-3xl mx-auto mb-8">
-            <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-8">
-              <div className="mb-6">
-                <label htmlFor="youtube-url" className="block text-sm font-medium text-gray-700 mb-2">
-                  YouTube Video URL
-                </label>
-                <input
-                  id="youtube-url"
-                  type="text"
-                  value={youtubeLink}
-                  onChange={(e) => setYoutubeLink(e.target.value)}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition"
-                  disabled={loading}
-                />
-              </div>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 w-full text-center"
+          >
+            <p className="text-red-600 font-bold text-sm tracking-widest uppercase">{error}</p>
+          </motion.div>
+        )}
+      </motion.div>
 
-              <button
-                type="submit"
-                disabled={loading || !youtubeLink.trim()}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
-              >
-                {loading ? 'Analyzing...' : 'Analyze Video'}
-              </button>
+      {/* Bottom Section */}
+      <div className="flex flex-col-reverse md:flex-row justify-between items-end gap-8 relative">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+          className="max-w-sm text-lg md:text-xl font-medium leading-snug text-justify md:pb-4"
+        >
+          Learn PM Insights & Advanced English from YouTube Videos
+        </motion.div>
 
-              {error && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-800 text-sm">{error}</p>
-                </div>
-              )}
-            </form>
-          </div>
+        <div className="relative">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+            className="text-[14vw] md:text-[10vw] leading-[0.85] font-display font-black tracking-normal uppercase m-0 text-right"
+          >
+            English
+          </motion.h1>
 
-          {/* Loading State */}
-          {loading && <LoadingAnalysis message={loadingMessage} />}
-
-          {/* Results */}
-          {analysisData && !loading && (
-            <Results
-              data={analysisData}
-              onSeek={handleSeek}
-            />
-          )}
-        </>
+          {/* Decorative SVG */}
+          <motion.svg
+            initial={{ opacity: 0, rotate: -90 }}
+            animate={{ opacity: 0.7, rotate: 0 }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            className="absolute -top-16 -left-8 md:-top-24 md:-left-16 w-20 h-20 md:w-32 md:h-32 animate-[spin_15s_linear_infinite] pointer-events-none text-green-800"
+            viewBox="0 0 68 68"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g stroke="currentColor" strokeWidth="1">
+              <path d="M34 0V68"></path>
+              <path d="M68 34H0"></path>
+              <path d="M25.2876 1.13379L42.706 66.865"></path>
+              <path d="M66.8651 25.2908L1.13477 42.7092"></path>
+              <path d="M43.0516 1.22656L24.9492 66.7736"></path>
+              <path d="M66.7736 43.0512L1.22656 24.9487"></path>
+              <path d="M51.4533 4.81885L16.5557 63.1812"></path>
+              <path d="M63.1821 51.4489L4.81982 16.5513"></path>
+              <path d="M58.0607 9.9751L9.94385 58.0248"></path>
+              <path d="M58.0228 58.0585L9.97314 9.94165"></path>
+              <path d="M63.1397 16.4749L4.86816 51.524"></path>
+              <path d="M51.5228 63.1358L16.4736 4.86426"></path>
+            </g>
+          </motion.svg>
+        </div>
       </div>
     </div>
   )
