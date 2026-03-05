@@ -17,7 +17,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from services.youtube_service import YouTubeService
 from services.ai_service import AIService
 
-
 # Load environment variables
 load_dotenv()
 
@@ -41,22 +40,8 @@ def health_check():
 def analyze_video():
     """
     Analyze a YouTube video for PM insights and English expressions.
-    
-    Expected JSON body:
-    {
-        "youtube_url": "https://youtube.com/watch?v=..."
-    }
-    
-    Returns:
-    {
-        "success": true,
-        "video": {...},
-        "pm_insights": [...],
-        "english_expressions": [...]
-    }
     """
     try:
-        # Get YouTube URL from request
         data = request.get_json()
         youtube_url = data.get('youtube_url')
         
@@ -66,20 +51,15 @@ def analyze_video():
                 "error": "YouTube URL is required"
             }), 400
         
-        # Validate YouTube URL
         if not youtube_service.validate_url(youtube_url):
             return jsonify({
                 "success": False,
                 "error": "Invalid YouTube URL"
             }), 400
         
-        # Extract video ID
         video_id = youtube_service.extract_video_id(youtube_url)
-        
-        # Get video metadata
         video_metadata = youtube_service.get_video_metadata(video_id)
         
-        # Get transcript
         try:
             transcript_result = youtube_service.get_transcript(video_id)
         except ValueError as e:
@@ -92,7 +72,7 @@ def analyze_video():
         try:
             pm_insights = ai_service.analyze_pm_insights(
                 transcript_text=transcript_result.get('full_text'),
-                video_title=None, # Could fetch from YouTube API if needed
+                video_title=None,
                 video_url=youtube_url if transcript_result.get('fallback_needed') else None
             )
         except ValueError as e:
@@ -114,7 +94,6 @@ def analyze_video():
                 "error": f"English expression analysis failed: {str(e)}"
             }), 500
         
-        # Return successful response
         return jsonify({
             "success": True,
             "video": video_metadata,
@@ -135,13 +114,16 @@ def notion_auth():
     try:
         data = request.get_json()
         code = data.get('code')
-
+        
         client_id = os.getenv('NOTION_CLIENT_ID')
         client_secret = os.getenv('NOTION_CLIENT_SECRET')
         redirect_uri = os.getenv('NOTION_REDIRECT_URI')
 
         if not all([client_id, client_secret, redirect_uri, code]):
-            return jsonify({"success": False, "error": "Missing OAuth parameters"}), 400
+            return jsonify({
+                "success": False,
+                "error": "Missing OAuth parameters"
+            }), 400
 
         credentials = f"{client_id}:{client_secret}"
         encoded_credentials = base64.b64encode(credentials.encode()).decode()
@@ -158,9 +140,9 @@ def notion_auth():
                 "redirect_uri": redirect_uri
             }
         )
-
+        
         token_data = response.json()
-
+        
         if "error" in token_data:
             return jsonify({
                 "success": False,
@@ -175,7 +157,10 @@ def notion_auth():
         })
 
     except Exception as e:
-        return jsonify({"success": False, "error": f"Failed to authenticate with Notion: {str(e)}"}), 500
+        return jsonify({
+            "success": False,
+            "error": f"Failed to authenticate with Notion: {str(e)}"
+        }), 500
 
 
 @app.route('/api/export/notion', methods=['POST'])
@@ -185,37 +170,47 @@ def export_to_notion():
         data = request.get_json()
         analysis_data = data.get('analysis_data')
         access_token = data.get('access_token')
-
+        
         if not access_token:
-            return jsonify({"success": False, "error": "Notion access token is required"}), 401
-
+            return jsonify({
+                "success": False,
+                "error": "Notion access token is required"
+            }), 401
+            
         if not analysis_data:
-            return jsonify({"success": False, "error": "analysis_data is required"}), 400
-
+            return jsonify({
+                "success": False,
+                "error": "analysis_data is required"
+            }), 400
+            
         from services.notion_service import NotionService
         user_notion_service = NotionService(auth_token=access_token)
-
+        
         pages = user_notion_service.search_pages()
         if not pages:
             return jsonify({
                 "success": False,
                 "error": "No accessible pages found. Please share a page with the integration."
             }), 404
-
+            
         parent_page_id = pages[0]['id']
         result = user_notion_service.create_analysis_page(parent_page_id, analysis_data)
-
-        return jsonify({"success": True, "notion_url": result.get('url')})
-
+        
+        return jsonify({
+            "success": True,
+            "notion_url": result.get('url')
+        })
+        
     except Exception as e:
-        return jsonify({"success": False, "error": f"Failed to export to Notion: {str(e)}"}), 500
+        return jsonify({
+            "success": False,
+            "error": f"Failed to export to Notion: {str(e)}"
+        }), 500
 
 
 if __name__ == '__main__':
-    # Check if API key is set
     if not os.getenv('GOOGLE_API_KEY'):
         print("WARNING: GOOGLE_API_KEY not found in environment variables")
-        print("Please create a .env file with your API key")
     
     print("Starting PM-ENG API server...")
     print("API will be available at http://localhost:5001")
