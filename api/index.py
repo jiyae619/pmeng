@@ -4,6 +4,11 @@ from dotenv import load_dotenv
 import os
 import requests
 import base64
+import sys
+
+# Ensure the api/ directory is on the Python path for Vercel
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 
 from services.youtube_service import YouTubeService
 from services.ai_service import AIService
