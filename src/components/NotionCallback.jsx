@@ -27,10 +27,12 @@ export default function NotionCallback() {
 
         const exchangeCode = async () => {
             try {
+                const redirectUri = window.location.origin + '/notion-callback';
+
                 const response = await fetch(`${API_URL}/api/notion/auth`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ code, redirect_uri: redirectUri })
                 })
 
                 const data = await response.json()

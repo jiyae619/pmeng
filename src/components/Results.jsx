@@ -7,6 +7,12 @@ export default function Results({ data, onBack }) {
     const [isExporting, setIsExporting] = useState(false)
     const [exportError, setExportError] = useState(null)
     const [notionUrl, setNotionUrl] = useState(null)
+    
+    // New state for Notion Page Selection
+    const [showNotionModal, setShowNotionModal] = useState(false)
+    const [notionPages, setNotionPages] = useState([])
+    const [isLoadingPages, setIsLoadingPages] = useState(false)
+    
     const playerRef = useRef(null)
     const API_URL = import.meta.env.VITE_API_URL || ''
 
@@ -71,6 +77,60 @@ export default function Results({ data, onBack }) {
             return
         }
 
+        // If connected, show modal and fetch pages
+        setShowNotionModal(true)
+        fetchNotionPages(accessToken)
+    }
+
+    const fetchNotionPages = async (accessToken) => {
+        setIsLoadingPages(true)
+        setExportError(null)
+        
+        try {
+            const response = await fetch(`${API_URL}/api/notion/pages`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            })
+
+            const result = await response.json()
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    handleDisconnectNotion()
+                    throw new Error('Notion access revoked or expired. Please reconnect.')
+                }
+                throw new Error(result.error || 'Failed to fetch Notion pages')
+            }
+
+            if (result.success) {
+                setNotionPages(result.pages || [])
+            }
+        } catch (err) {
+            setExportError(err.message)
+            setShowNotionModal(false)
+        } finally {
+            setIsLoadingPages(false)
+        }
+    }
+
+    const handleDisconnectNotion = () => {
+        localStorage.removeItem('notion_access_token')
+        localStorage.removeItem('notion_workspace_name')
+        setNotionPages([])
+        setShowNotionModal(false)
+        // Force a re-render to update the button state
+        setNotionUrl(null)
+    }
+
+    const executeExport = async (pageId) => {
+        setIsExporting(true)
+        setExportError(null)
+        setShowNotionModal(false)
+
+        const accessToken = localStorage.getItem('notion_access_token')
+
         try {
             const response = await fetch(`${API_URL}/api/export/notion`, {
                 method: 'POST',
@@ -79,7 +139,8 @@ export default function Results({ data, onBack }) {
                 },
                 body: JSON.stringify({
                     analysis_data: data,
-                    access_token: accessToken
+                    access_token: accessToken,
+                    page_id: pageId
                 })
             })
 
@@ -93,7 +154,7 @@ export default function Results({ data, onBack }) {
                 setNotionUrl(result.notion_url)
             } else {
                 if (response.status === 401) {
-                    localStorage.removeItem('notion_access_token')
+                    handleDisconnectNotion()
                     throw new Error('Notion access revoked or expired. Please reconnect.')
                 }
                 throw new Error(result.error || 'Export failed')
@@ -227,6 +288,70 @@ export default function Results({ data, onBack }) {
                     </div>
                 </div>
             </main>
+
+            {/* Notion Page Selection Modal */}
+            {showNotionModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#141414]/80 backdrop-blur-sm p-6">
+                    <div className="bg-[#E4E3E0] border-4 border-[#141414] w-full max-w-lg flex flex-col max-h-[80vh]">
+                        <div className="flex items-center justify-between p-6 border-b-4 border-[#141414]">
+                            <h3 className="text-xl md:text-2xl font-display font-black uppercase m-0">
+                                Save to Notion
+                            </h3>
+                            <button 
+                                onClick={() => setShowNotionModal(false)}
+                                className="text-[#141414] hover:text-green-800 transition-colors"
+                            >
+                                <iconify-icon icon="solar:close-circle-bold" width="32"></iconify-icon>
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <p className="uppercase tracking-widest font-bold text-sm mb-4 opacity-70">
+                                Select a page to save this analysis
+                            </p>
+                            
+                            {isLoadingPages ? (
+                                <div className="flex flex-col items-center justify-center py-12">
+                                    <iconify-icon icon="solar:refresh-linear" width="48" className="animate-spin text-green-800 mb-4"></iconify-icon>
+                                    <p className="uppercase font-bold tracking-widest text-sm">Loading pages...</p>
+                                </div>
+                            ) : notionPages.length > 0 ? (
+                                <div className="flex flex-col gap-3">
+                                    {notionPages.map(page => (
+                                        <button
+                                            key={page.id}
+                                            onClick={() => executeExport(page.id)}
+                                            className="w-full text-left p-4 border-2 border-[#141414] hover:bg-green-800 hover:text-[#E4E3E0] hover:border-green-800 transition-colors flex items-center gap-3 group"
+                                        >
+                                            <iconify-icon icon="solar:document-text-linear" width="24" className="text-[#141414] group-hover:text-[#E4E3E0]"></iconify-icon>
+                                            <span className="font-bold text-lg truncate flex-1">{page.title}</span>
+                                            <iconify-icon icon="solar:arrow-right-linear" width="20" className="opacity-0 group-hover:opacity-100 transition-opacity"></iconify-icon>
+                                        </button>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8">
+                                    <p className="font-bold mb-2">No pages found.</p>
+                                    <p className="text-sm opacity-70">Please ensure you granted access to pages during Notion setup.</p>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="p-6 border-t-4 border-[#141414] bg-[#141414]/5 flex justify-between items-center">
+                            <span className="text-sm font-bold opacity-70">
+                                Connected as: {localStorage.getItem('notion_workspace_name') || 'Notion User'}
+                            </span>
+                            <button
+                                onClick={handleDisconnectNotion}
+                                className="text-red-600 hover:text-red-800 uppercase tracking-widest font-bold text-sm flex items-center gap-1 transition-colors"
+                            >
+                                <iconify-icon icon="solar:logout-2-bold" width="18"></iconify-icon>
+                                Disconnect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

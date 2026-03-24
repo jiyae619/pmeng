@@ -68,34 +68,48 @@ def analyze_video():
                 "error": str(e)
             }), 400
         
-        # Analyze for PM insights
-        try:
-            pm_insights = ai_service.analyze_pm_insights(
+        import concurrent.futures
+        import time
+
+        # Run AI analyses in parallel to avoid Vercel 5-minute timeout
+        start_time = time.time()
+        errors = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future_pm = executor.submit(
+                ai_service.analyze_pm_insights,
                 transcript_text=transcript_result.get('full_text'),
                 video_title=None,
                 video_url=youtube_url if transcript_result.get('fallback_needed') else None
             )
-        except ValueError as e:
-            return jsonify({
-                "success": False,
-                "error": f"PM insights analysis failed: {str(e)}"
-            }), 500
-        
-        # Analyze for English expressions
-        try:
-            english_expressions = ai_service.analyze_english_expressions(
+            future_english = executor.submit(
+                ai_service.analyze_english_expressions,
                 transcript_text=transcript_result.get('full_text'),
                 video_id=video_id,
                 video_url=youtube_url if transcript_result.get('fallback_needed') else None
             )
-        except ValueError as e:
+
+            try:
+                pm_insights = future_pm.result()
+            except Exception as e:
+                errors.append(f"PM insights analysis failed: {str(e)}")
+
+            try:
+                english_expressions = future_english.result()
+            except Exception as e:
+                errors.append(f"English expression analysis failed: {str(e)}")
+            
+        if errors:
             return jsonify({
                 "success": False,
-                "error": f"English expression analysis failed: {str(e)}"
+                "error": " | ".join(errors)
             }), 500
+        
+        execution_time = time.time() - start_time
+        print(f"DEBUG - Parallel AI execution took {execution_time:.2f} seconds")
         
         return jsonify({
             "success": True,
+            "processing_time_sec": round(execution_time, 2),
             "video": video_metadata,
             "pm_insights": pm_insights,
             "english_expressions": english_expressions

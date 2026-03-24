@@ -214,7 +214,7 @@ Instructions:
 2. For each expression:
    - Extract the exact phrase used
    - Provide the context/example of how it was used in the video
-   - Include the timestamp (in seconds) where it appears. If uncertain, provide your best reasonable estimate.
+   - Include the exact timestamp (minute:second format) exactly as it appears in the transcript brackets (e.g., "01:23"). If uncertain, provide your best reasonable estimate in MM:SS format.
 3. Focus on expressions like:
    - Executive communication patterns
    - Persuasive language techniques
@@ -226,7 +226,7 @@ Return ONLY a JSON array with this exact structure:
   {{
     "phrase": "The exact expression or phrase",
     "example": "How it was used in the video with context",
-    "timestamp": 123
+    "timestamp": "MM:SS"
   }}
 ]
 
@@ -267,10 +267,26 @@ Return exactly 7 expressions. Ensure the JSON is valid and properly formatted.""
             # Parse JSON response with retry logic
             expressions = self.parse_json_with_retry(content, "English Expressions")
             
-            # Add timestamp URLs
+            # Add timestamp URLs and convert MM:SS to seconds for the frontend
             for expr in expressions:
-                timestamp = expr.get('timestamp', 0)
-                expr['timestamp_url'] = f"https://www.youtube.com/watch?v={video_id}&t={timestamp}s"
+                time_val = expr.get('timestamp', "00:00")
+                seconds = 0
+                
+                if isinstance(time_val, str) and ':' in time_val:
+                    try:
+                        parts = time_val.split(':')
+                        # Handle cases like HH:MM:SS or MM:SS
+                        if len(parts) == 3:
+                            seconds = int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+                        elif len(parts) == 2:
+                            seconds = int(parts[0]) * 60 + int(parts[1])
+                    except ValueError:
+                        pass
+                elif isinstance(time_val, (int, float)):
+                    seconds = int(time_val)
+                    
+                expr['timestamp'] = seconds
+                expr['timestamp_url'] = f"https://www.youtube.com/watch?v={video_id}&t={seconds}s"
             
             # Validate we have exactly 7 expressions
             if len(expressions) > 7:

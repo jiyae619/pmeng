@@ -79,30 +79,38 @@ def analyze_video():
                 "error": str(e)
             }), 400
         
-        # Analyze for PM insights
-        try:
-            pm_insights = ai_service.analyze_pm_insights(
+        import concurrent.futures
+
+        # Run AI analyses in parallel to avoid Vercel 5-minute timeout
+        errors = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future_pm = executor.submit(
+                ai_service.analyze_pm_insights,
                 transcript_text=transcript_result.get('full_text'),
-                video_title=None, # Could fetch from YouTube API if needed
+                video_title=None,
                 video_url=youtube_url if transcript_result.get('fallback_needed') else None
             )
-        except ValueError as e:
-            return jsonify({
-                "success": False,
-                "error": f"PM insights analysis failed: {str(e)}"
-            }), 500
-        
-        # Analyze for English expressions
-        try:
-            english_expressions = ai_service.analyze_english_expressions(
+            future_english = executor.submit(
+                ai_service.analyze_english_expressions,
                 transcript_text=transcript_result.get('full_text'),
                 video_id=video_id,
                 video_url=youtube_url if transcript_result.get('fallback_needed') else None
             )
-        except ValueError as e:
+
+            try:
+                pm_insights = future_pm.result()
+            except Exception as e:
+                errors.append(f"PM insights analysis failed: {str(e)}")
+
+            try:
+                english_expressions = future_english.result()
+            except Exception as e:
+                errors.append(f"English expression analysis failed: {str(e)}")
+            
+        if errors:
             return jsonify({
                 "success": False,
-                "error": f"English expression analysis failed: {str(e)}"
+                "error": " | ".join(errors)
             }), 500
         
         # Return successful response
@@ -128,10 +136,11 @@ def notion_auth():
     try:
         data = request.get_json()
         code = data.get('code')
+        frontend_redirect_uri = data.get('redirect_uri')
         
         client_id = os.getenv('NOTION_CLIENT_ID')
         client_secret = os.getenv('NOTION_CLIENT_SECRET')
-        redirect_uri = os.getenv('NOTION_REDIRECT_URI')
+        redirect_uri = frontend_redirect_uri or os.getenv('NOTION_REDIRECT_URI')
 
         if not all([client_id, client_secret, redirect_uri, code]):
             return jsonify({
@@ -179,6 +188,60 @@ def notion_auth():
         }), 500
 
 
+@app.route('/api/notion/pages', methods=['GET'])
+def get_notion_pages():
+    """
+    Fetch all pages the integration has access to using the provided access token.
+    """
+    try:
+        # Require access token in the Authorization header
+        auth_header = request.headers.get('Authorization')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return jsonify({
+                "success": False,
+                "error": "Notion access token is required in Authorization header"
+            }), 401
+            
+        access_token = auth_header.split(' ')[1]
+        
+        # Initialize user-specific Notion client
+        user_notion_service = NotionService(auth_token=access_token)
+        
+        pages = user_notion_service.search_pages()
+        
+        # Format the pages for the frontend
+        formatted_pages = []
+        for p in pages:
+            title = "Untitled"
+            # Extract title properly depending on the page schema
+            if "properties" in p and "title" in p["properties"] and "title" in p["properties"]["title"]:
+                title_arr = p["properties"]["title"]["title"]
+                if title_arr and len(title_arr) > 0:
+                    title = title_arr[0].get("plain_text", "Untitled")
+            elif "properties" in p and "Name" in p["properties"] and "title" in p["properties"]["Name"]:
+                title_arr = p["properties"]["Name"]["title"]
+                if title_arr and len(title_arr) > 0:
+                    title = title_arr[0].get("plain_text", "Untitled")
+
+            formatted_pages.append({
+                "id": p["id"],
+                "title": title,
+                "url": p.get("url")
+            })
+
+        return jsonify({
+            "success": True,
+            "pages": formatted_pages
+        })
+        
+    except Exception as e:
+        print(f"Notion fetch pages error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": f"Failed to fetch Notion pages: {str(e)}"
+        }), 500
+
+
 @app.route('/api/export/notion', methods=['POST'])
 def export_to_notion():
     """
@@ -204,16 +267,18 @@ def export_to_notion():
         # Initialize user-specific Notion client
         user_notion_service = NotionService(auth_token=access_token)
         
-        # Determine parent page. For OAuth, users have shared specific pages.
-        # We will pick the first shared page we find.
-        pages = user_notion_service.search_pages()
-        if not pages:
-            return jsonify({
-                "success": False,
-                "error": "No accessible pages found in Notion. Please share a page with the integration."
-            }), 404
-            
-        parent_page_id = pages[0]['id']
+        page_id = data.get('page_id')
+        
+        # If page_id is not provided, we fall back to the first accessible page
+        parent_page_id = page_id
+        if not parent_page_id:
+            pages = user_notion_service.search_pages()
+            if not pages:
+                return jsonify({
+                    "success": False,
+                    "error": "No accessible pages found in Notion. Please share a page with the integration."
+                }), 404
+            parent_page_id = pages[0]['id']
             
         # Create Notion page
         result = user_notion_service.create_analysis_page(parent_page_id, analysis_data)
